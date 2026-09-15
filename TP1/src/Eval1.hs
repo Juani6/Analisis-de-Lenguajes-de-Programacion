@@ -58,9 +58,9 @@ evalExp :: Exp a -> State -> Pair a State
 evalExp (Const n) s   = n :!: s
 evalExp (Var v )  s   = lookfor v s :!: s
 evalExp (UMinus x) s  = let (n :!:s')   = evalExp x s in (-n) :!: s' 
-evalExp (Plus x y) s = let  (n0 :!:s')  = evalExp x s 
+evalExp (Plus x y) s  = let (n0 :!: s')  = evalExp x s 
                             (n1 :!: s'') = evalExp y s'
-                       in (n0 + n1) :!: s''
+                        in (n0 + n1) :!: s''
 evalExp (Minus x y) s = let (n0 :!: s')  = evalExp x s 
                             (n1 :!: s'') = evalExp y s'
                         in (n0 - n1) :!: s''
@@ -76,6 +76,7 @@ evalExp (VarInc x) s  = let n0 = lookfor x s
 evalExp (VarDec x) s  = let n0 = lookfor x s
                             n  = n0 - 1
                         in n :!: update x n s 
+
 evalExp (BTrue) s     = True :!: s
 evalExp (BFalse) s    = False :!: s
 evalExp (Lt e0 e1) s  = let (n0 :!: s')  = evalExp e0 s 
@@ -87,11 +88,11 @@ evalExp (Gt e0 e1) s  = let (n0 :!: s')  = evalExp e0 s
 evalExp (Eq e0 e1) s  = let (n0 :!: s')  = evalExp e0 s 
                             (n1 :!: s'') = evalExp e1 s'
                         in (n0 == n1) :!: s''
-evalExp (NEq e0 e1) s  = let (n0 :!: s')  = evalExp e0 s 
-                             (n1 :!: s'') = evalExp e1 s'
+evalExp (NEq e0 e1) s = let (n0 :!: s')  = evalExp e0 s 
+                            (n1 :!: s'') = evalExp e1 s'
                         in (n0 /= n1) :!: s''
-evalExp (And p0 p1) s  = let (b0 :!: s')  = evalExp p0 s 
-                             (b1 :!: s'') = evalExp p1 s'
+evalExp (And p0 p1) s = let (b0 :!: s')  = evalExp p0 s 
+                            (b1 :!: s'') = evalExp p1 s'
                         in (b0 && b1) :!: s''
 evalExp (Or p0 p1) s  = let (b0 :!: s')  = evalExp p0 s 
                             (b1 :!: s'') = evalExp p1 s'

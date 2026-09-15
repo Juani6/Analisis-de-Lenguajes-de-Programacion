@@ -58,8 +58,8 @@ intterm :: Parser (Exp Int)
 intterm = chainl1 atom termop
 
 termop :: Parser (Exp Int -> Exp Int -> Exp Int)
-termop = (reservedOp lis "/" >> return Div)
-  <|> (reservedOp lis "*" >> return Times)
+termop = (reservedOp lis "*" >> return Times)
+  <|> (reservedOp lis "/" >> return Div)
 
 atom :: Parser (Exp Int)
 atom = minusPar <|> varOpPar <|> natPar <|> varParen

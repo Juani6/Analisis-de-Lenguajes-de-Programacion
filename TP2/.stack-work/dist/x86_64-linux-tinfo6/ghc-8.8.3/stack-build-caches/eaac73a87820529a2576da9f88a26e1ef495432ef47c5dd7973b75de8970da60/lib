@@ -1,0 +1,24 @@
+/home/juani/.stack/programs/x86_64-linux/ghc-tinfo6-8.8.3/lib/ghc-8.8.3/include/ghcversion.h:
+  hash: 40d1b759f485f1cd5a54141a6412691ac2b76930507289a16a6a7b89b045b4d2
+/home/juani/Documents/alp/TP2/.stack-work/dist/x86_64-linux-tinfo6/ghc-8.8.3/build/autogen/Paths_TP2.hs:
+  hash: a4a73fd7eec3c5e243c2aa23e038f8020e82fc4fd7c4b9ded646b79137399f93
+/home/juani/Documents/alp/TP2/.stack-work/dist/x86_64-linux-tinfo6/ghc-8.8.3/build/autogen/cabal_macros.h:
+  hash: 68e2047e90282301504567280224db1547288a62d22e454d2302cb76dc1aaca3
+/home/juani/Documents/alp/TP2/ChangeLog.md:
+  hash: b6db31e04d81c0e662bab2cbee2044b15c6a17422f0ed7b23ee85da5086cf956
+/home/juani/Documents/alp/TP2/README.md:
+  hash: c9dd571c704339f5233b28ef34c9c97ab78ebad729d2ce85fb406910ae0ffb6c
+/home/juani/Documents/alp/TP2/TP2.cabal:
+  hash: cb0f821cf9fb3f41218030e9847773d4370e9fd5313931ae8cc59a1862c4dcf4
+/home/juani/Documents/alp/TP2/package.yaml:
+  hash: 3f5d9d8a2a57469ed5359f4daf48ab7a74a6eb0299ce2def67ad968547b7ac61
+/home/juani/Documents/alp/TP2/src/Common.hs:
+  hash: c18f467a1f4eb4701a3dc29bdbac50ad025d8d4ec7487cc872b67920340fde4e
+/home/juani/Documents/alp/TP2/src/Parse.y:
+  hash: 3c8e35d0af867d673454ead17b2f19662c8b0e5658649bd34d81f515a7b030b1
+/home/juani/Documents/alp/TP2/src/PrettyPrinter.hs:
+  hash: a4091dd93f5b12f532c25cb4c2b37eeefac31ecb4aa51dcdc924eb38d09f8bc7
+/home/juani/Documents/alp/TP2/src/Simplytyped.hs:
+  hash: dc547a5cabf5834b1355645a74d984299cb61f72bd299f17ffe6f6e8d2104af2
+/usr/include/stdc-predef.h:
+  hash: cb08cd5d4cc059a90833ac48a284d25016e8d56ded8ad4cd98d8ac59cc5053f3

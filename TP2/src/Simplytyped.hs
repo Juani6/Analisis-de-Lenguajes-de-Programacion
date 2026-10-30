@@ -32,13 +32,16 @@ conversion :: LamTerm -> Term
 conversion = conversion' []
 
 conversion' :: [String] -> LamTerm -> Term
-conversion' [] (LVar s)       = Free (Global s)
-conversion' ns (LVar s)       = case dist ns s of
-                                      Just n  -> Bound n
-                                      Nothing -> Free (Global s)  
-conversion' ns (LAbs s t l)   = Lam t (conversion' (s : ns) l)
-conversion' ns (LApp l1 l2)   = conversion' ns l1 :@: conversion' ns l2
-conversion' ns (LLet s l1 l2) = Let (conversion' ns l1) (conversion' (s:ns) l2)
+conversion' [] (LVar s)        = Free (Global s)
+conversion' ns (LVar s)        = case dist ns s of
+                                       Just n  -> Bound n
+                                       Nothing -> Free (Global s)  
+conversion' ns (LAbs s t l)    = Lam t (conversion' (s : ns) l)
+conversion' ns (LApp l1 l2)    = conversion' ns l1 :@: conversion' ns l2
+conversion' ns (LLet s l1 l2)  = Let (conversion' ns l1) (conversion' (s:ns) l2)
+conversion' ns (LZero)         = Zero
+conversion' ns (LSuc t)        = Suc (conversion' ns t)
+conversion' ns (LRec t1 t2 t3) = Rec (conversion' ns t1) (conversion' ns t2) (conversion' ns t3)
 
 dist :: [String] -> String -> Maybe Int
 dist [] _     = Nothing
@@ -60,35 +63,41 @@ dist (x:xs) s = if x == s
 sub :: Int -> Term -> Term -> Term
 sub i t (Bound j) | i == j    = t
 sub _ _ (Bound j) | otherwise = Bound j
+sub _ t Zero                  = Zero
 sub _ _ (Free n   )           = Free n
 sub i t (u   :@: v)           = sub i t u :@: sub i t v
 sub i t (Lam t'  u)           = Lam t' (sub (i + 1) t u)
-
+sub i t (Suc t')              = Suc (sub i t t')
+sub i t (Rec t1 t2 t3)        = (Rec (sub i t t1) (sub i t t2) (sub i t t3))
 -- convierte un valor en el término equivalente
 quote :: Value -> Term
-quote (VLam t f) = Lam t f
+quote (VLam t f)       = Lam t f
+quote (VNum nv)        = quoteNumVal nv
+
+quoteNumVal :: NumVal -> Term
+quoteNumVal NZero        = Zero
+quoteNumVal (NSuc nv)    = Suc (quoteNumVal nv)
 
 -- evalúa un término en un entorno dado
-{-
-type NameEnv v t = [(Name, (v, t))]
-data Term  = Bound Int
-             | Free Name 
-             | Term :@: Term
-             | Lam Type Term
--}
 
 eval :: NameEnv Value Type -> Term -> Value
-eval nvs t@(Free s)         = case lookup s nvs of
-                                 Just (u,t') -> VLam t' (quote u)
-                                 Nothing     -> VLam EmptyT t 
-eval nvs (Let t1 t2)        = let v = eval nvs t1
-                              in eval nvs (sub 0 t2 (quote v)) 
-eval nvs ((Lam t u) :@: (Lam t' u')) = eval nvs (sub 0 u u')
-eval nvs (t1 :@: t2)        = let v1 = eval nvs t1 
-                                  v2 = eval nvs t2
-                              in eval nvs (quote v1 :@: quote v2)
-eval _ (Lam t f)            = VLam t f
+eval nvs t@(Free s)                   = case lookup s nvs of
+                                           Just (u,t') -> u
+                                           Nothing     -> error("que haces aca") 
+eval nvs (Let t1 t2)                  = let v = eval nvs t1
+                                        in eval nvs (sub 0 (quote v) t2) 
+eval nvs (t1 :@: t2)                  = let (VLam t u) = eval nvs t1
+                                            v2 = eval nvs t2
+                                        in eval nvs $ sub 0 (quote v2) u 
+eval nvs (Zero)                       = VNum NZero
+eval nvs (Suc t)                      = VNum $ NSuc $ unNum $ eval nvs t
+eval nvs (Rec t1 t2 Zero)             = eval nvs t1
+eval nvs (Rec t1 t2 (Suc t))          = eval nvs (t2 :@: (Rec t1 t2 t) :@: t) 
+eval nvs (Rec t1 t2 t3)               = let t3' = eval nvs t3 in eval nvs (Rec t1 t2 (quote t3'))
+eval _ (Lam t f)                      = VLam t f
 
+unNum :: Value -> NumVal 
+unNum (VNum x) = x
 
 ----------------------
 --- type checker
@@ -139,5 +148,14 @@ infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
     _          -> notfunError tt
 infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
 infer' c e (Let t1 t2) = infer' c e t1 >>= \tt -> infer' (tt:c) e t2
+infer' c e (Zero) = ret NatT
+infer' c e (Suc t) = infer' c e t >>= \tt -> case tt of 
+                                                  NatT -> ret NatT
+                                                  _   -> notfunError tt
+infer' c e (Rec t1 t2 t3) = infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> infer' c e t3 >>= \tv ->
+  case tu of
+    FunT t1' (FunT t2' t3') -> if (t1' == tt && tt == t3') then (if (tv == NatT) then ret tt else matchError NatT tv) 
+                                                           else matchError (FunT tt (FunT NatT tt)) tu
+    _ -> notfunError tu   
 
-
+-- if (t1' == tt && tt == t3' && tv == NatT ) then ret tt else matchError

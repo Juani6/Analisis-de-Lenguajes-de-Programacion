@@ -1,0 +1,3 @@
+def T = \n:Nat. suc n
+def U = \x:Nat->Nat.\y:Nat.\n:Nat. R (x (suc 0)) (\p:Nat.\q:Nat. x p) n
+def ACK = \m:Nat.\n:Nat. R T U m n

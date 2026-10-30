@@ -15,22 +15,25 @@ import Data.Char
 %lexer {lexer} {TEOF}
 
 %token
-    '='     { TEquals }
-    ':'     { TColon }
-    '\\'    { TAbs }
-    '.'     { TDot }
-    '('     { TOpen }
-    ')'     { TClose }
-    '->'    { TArrow }
-    'let'   { TLet }
-    'in'    { TIn }
-    '0'     { TZero }
-    'suc'   { TSuc }
-    R       { TRec }
-    VAR     { TVar $$ }
-    TYPENAT { TTypeNat }
-    TYPEE   { TTypeE }
-    DEF     { TDef }
+    '='      { TEquals }
+    ':'      { TColon }
+    '\\'     { TAbs }
+    '.'      { TDot }
+    '('      { TOpen }
+    ')'      { TClose }
+    '->'     { TArrow }
+    'let'    { TLet }
+    'in'     { TIn }
+    '0'      { TZero }
+    'suc'    { TSuc }
+    cons     { TCons }
+    nil      { TNil }
+    R        { TRec }
+    VAR      { TVar $$ }
+    TYPENAT  { TTypeNat }
+    TYPELIST { TTypeList}
+    TYPEE    { TTypeE }
+    DEF      { TDef }
     
 
 %left '=' 
@@ -55,13 +58,22 @@ NAbs    :: { LamTerm }
 
 Atom    :: { LamTerm }
         : VAR                          { LVar $1 }
-        | '0'                          { LZero }
-        | 'suc' Atom                   { LSuc $2 }
-        | R Atom Atom Atom              { LRec $2 $3 $4 }  
+        | Nat                          { $1 }
+        | LNat                         { $1 }
         | '(' Exp ')'                  { $2 }
 
+Nat     :: { LamTerm }
+        : '0'                          { LZero }
+        | 'suc' Atom                   { LSuc $2 }
+        | R Atom Atom Atom              { LRec $2 $3 $4 }
+
+LNat    :: { LamTerm }
+        : nil                        { LNil }
+        | cons Atom Atom             { LCons $2 $3 }
+
 Type    : TYPEE                        { EmptyT }
-        | TYPENAT                     { NatT }
+        | TYPENAT                      { NatT }
+        | TYPELIST                     { ListT }
         | Type '->' Type               { FunT $1 $3 }
         | '(' Type ')'                 { $2 }
 
@@ -100,12 +112,15 @@ happyError = \ s i -> Failed $ "Línea "++(show (i::LineNumber))++": Error de pa
 data Token = TVar String
                | TTypeE
                | TTypeNat
+               | TTypeList
                | TDef
                | TAbs
                | TLet
                | TIn
                | TZero
                | TSuc
+               | TNil
+               | TCons
                | TRec
                | TDot
                | TOpen
@@ -139,23 +154,25 @@ lexer cont s = case s of
                     unknown -> \line -> Failed $ 
                      "Línea "++(show line)++": No se puede reconocer "++(show $ take 10 unknown)++ "..."
                     where lexVar cs = case span isAlpha cs of
-                              ("E",rest)    -> cont TTypeE rest
-                              ("Nat",rest)  -> cont TTypeNat rest
-                              ("def",rest)  -> cont TDef rest
-                              ("let",rest)  -> cont TLet rest
-                              ("in",rest)   -> cont TIn rest
-                              ("suc", rest) -> cont TSuc rest
-                              ("R", rest)   -> cont TRec rest
-                              -- ("0", rest)   -> cont TZero rest
-                              (var,rest)    -> cont (TVar var) rest
+                              ("E",rest)        -> cont TTypeE rest
+                              ("Nat",rest)      -> cont TTypeNat rest
+                              ("List",rest) -> cont TTypeList rest
+                              ("def",rest)      -> cont TDef rest
+                              ("let",rest)      -> cont TLet rest
+                              ("in",rest)       -> cont TIn rest
+                              ("suc", rest)     -> cont TSuc rest
+                              ("R", rest)       -> cont TRec rest
+                              ("nil", rest)     -> cont TNil rest
+                              ("cons",rest)     -> cont TCons rest
+                              (var,rest)        -> cont (TVar var) rest
                           consumirBK anidado cl cont s = case s of
-                              ('-':('-':cs)) -> consumirBK anidado cl cont $ dropWhile ((/=) '\n') cs
-                              ('{':('-':cs)) -> consumirBK (anidado+1) cl cont cs	
-                              ('-':('}':cs)) -> case anidado of
-                                                  0 -> \line -> lexer cont cs (line+cl)
-                                                  _ -> consumirBK (anidado-1) cl cont cs
-                              ('\n':cs) -> consumirBK anidado (cl+1) cont cs
-                              (_:cs) -> consumirBK anidado cl cont cs     
+                              ('-':('-':cs))    -> consumirBK anidado cl cont $ dropWhile ((/=) '\n') cs
+                              ('{':('-':cs))    -> consumirBK (anidado+1) cl cont cs	
+                              ('-':('}':cs))    -> case anidado of
+                                                     0 -> \line -> lexer cont cs (line+cl)
+                                                     _ -> consumirBK (anidado-1) cl cont cs
+                              ('\n':cs)         -> consumirBK anidado (cl+1) cont cs
+                              (_:cs)            -> consumirBK anidado cl cont cs     
                                            
 stmts_parse s = parseStmts s 1
 stmt_parse s = parseStmt s 1

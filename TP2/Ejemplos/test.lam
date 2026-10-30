@@ -1,0 +1,1 @@
+def LEN = \l:List. R 0 (\h:Nat.\r:Nat. suc r) l

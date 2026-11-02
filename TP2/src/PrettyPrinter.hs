@@ -48,34 +48,32 @@ pp ii vs (Zero) =
   text "0"
 pp ii vs (Suc t) = 
   text "suc"
-    <+> parensIf (isNotZero t) (pp ii vs t)
+    <+> parensIf (not (isAtom t)) (pp ii vs t)
 pp ii vs (Rec t1 t2 t3) =
     text "R"
   <+> sep 
-  [parens (pp ii vs t1),
-   parens(pp ii vs t2),
+  [parensIf (not (isAtom t1)) (pp ii vs t1),
+   parensIf (not (isAtom t2)) (pp ii vs t2),
    (pp ii vs t3)]
 pp ii vs (Nil) =
   text "nil"
 pp ii vs (Cons t1 t2) =
     text "cons"
-  <+> sep [parens (pp ii vs t1),
-          parensIf (isNotNil t2) (pp ii vs t2)]
+  <+> sep [parensIf (not (isAtom t1)) (pp ii vs t1),
+          parensIf (not (isAtom t2)) (pp ii vs t2)]
 pp ii vs (RecL t1 t2 t3) =
     text "RL"
   <+> sep 
-  [parens (pp ii vs t1),
-   parens(pp ii vs t2),
+  [parensIf (not (isAtom t1)) (pp ii vs t1),
+   parensIf (not (isAtom t2)) (pp ii vs t2),
    (pp ii vs t3)]
 
-isNotZero :: Term -> Bool
-isNotZero Zero = False
-isNotZero _    = True
-
-
-isNotNil :: Term -> Bool
-isNotNil Nil = False
-isNotNil _   = True
+isAtom :: Term -> Bool
+isAtom Zero      = True
+isAtom Nil       = True
+isAtom (Bound _) = True
+isAtom (Free _)  = True
+isAtom _         = False
 
 isLam :: Term -> Bool
 isLam (Lam _ _) = True

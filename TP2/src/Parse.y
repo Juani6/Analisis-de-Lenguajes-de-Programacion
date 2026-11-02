@@ -82,6 +82,7 @@ Atom    :: { LamTerm }
 Type    : TYPEE                        { EmptyT }
         | TYPENAT                      { NatT }
         | TYPELIST                     { ListT }
+        | TYPELIST TYPENAT             { ListT }
         | Type '->' Type               { FunT $1 $3 }
         | '(' Type ')'                 { $2 }
 

@@ -43,7 +43,6 @@ conversion' ns (LZero)          = Zero
 conversion' ns (LSuc t)         = Suc (conversion' ns t)
 conversion' ns (LRec t1 t2 t3)  = Rec (conversion' ns t1) (conversion' ns t2) (conversion' ns t3)
 conversion' ns (LNil)           = Nil
--- Sabemos que los parentesis no van pero los dejamos por una cuestion estetica
 conversion' ns (LCons t1 t2)    = Cons (conversion' ns t1) (conversion' ns t2)
 conversion' ns (LRecL t1 t2 t3) = RecL (conversion' ns t1) (conversion' ns t2) (conversion' ns t3)
 
@@ -97,7 +96,7 @@ quoteList (VCons n l)  = Cons (quoteNumVal n) (quoteList l)
 eval :: NameEnv Value Type -> Term -> Value
 eval nvs t@(Free s)                   = case lookup s nvs of
                                            Just (u,t') -> u
-                                           Nothing     -> error("que haces aca") 
+                                           Nothing     -> error("Variable libre no definida.") 
 eval nvs (Let t1 t2)                  = let v = eval nvs t1
                                         in eval nvs (sub 0 (quote v) t2) 
 eval nvs (t1 :@: t2)                  = let (VLam t u) = eval nvs t1
@@ -176,7 +175,7 @@ infer' c e Zero            = ret NatT
 infer' c e (Suc t)         = 
   infer' c e t >>= \tt -> case tt of 
                             NatT -> ret NatT
-                            _   -> notfunError tt
+                            _   -> matchError NatT tt
 infer' c e (Rec t1 t2 t3)  = 
   infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> infer' c e t3 >>= \tv ->
   case tv of
@@ -186,7 +185,7 @@ infer' c e (Rec t1 t2 t3)  =
                                                  then ret tt 
                                                  else matchError (FunT tt (FunT tv tt)) tu)
                                            else matchError ty2 tv
-              _ -> notfunError tv)
+              _ -> matchError (FunT tt (FunT NatT tt)) tv)
     _ -> notfunError tv
 infer' c e Nil             = ret ListT
 infer' c e (Cons t1 t2)    = 
@@ -202,7 +201,7 @@ infer' c e (RecL t1 t2 t3) =
                                                    then ret tt
                                                    else matchError (FunT tv (FunT tt tt)) tu)
                                              else matchError ty1 NatT
-                _ -> notfunError tv)
+                _ -> matchError (FunT ListT (FunT tt tt)) tv)
     _ -> notfunError tv   
 
 -- if (t1' == tt && tt == t3' && tv == NatT ) then ret tt else matchError

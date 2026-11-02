@@ -29,6 +29,7 @@ import Data.Char
     cons     { TCons }
     nil      { TNil }
     R        { TRec }
+    RL       { TRecL }
     VAR      { TVar $$ }
     TYPENAT  { TTypeNat }
     TYPELIST { TTypeList}
@@ -50,26 +51,33 @@ Exp     :: { LamTerm }
         : '\\' VAR '.' Exp             { LAbs $2 EmptyT $4 }
         | '\\' VAR ':' Type '.' Exp    { LAbs $2 $4 $6 }
         | 'let' VAR '=' Exp 'in' Exp   { LLet $2 $4 $6 }
+        | RExp                         { $1 }
+
+RExp    :: {LamTerm}
+        : R Atom Atom Atom              { LRec $2 $3 $4 }
+        | RLExp                         { $1 }
+
+RLExp   :: {LamTerm}
+        : RL Atom Atom Atom            { LRecL $2 $3 $4}
+        | CExp                         { $1 }
+
+CExp    :: {LamTerm}
+        : cons Atom Atom               { LCons $2 $3}
+        | SExp                         { $1 }
+
+SExp    :: {LamTerm}    
+        : 'suc' SExp                   { LSuc $2 }
         | NAbs                         { $1 }
-        
+
 NAbs    :: { LamTerm }
         : NAbs Atom                    { LApp $1 $2 }
         | Atom                         { $1 }
 
 Atom    :: { LamTerm }
         : VAR                          { LVar $1 }
-        | Nat                          { $1 }
-        | LNat                         { $1 }
+        | '0'                          { LZero }
+        | nil                          { LNil }
         | '(' Exp ')'                  { $2 }
-
-Nat     :: { LamTerm }
-        : '0'                          { LZero }
-        | 'suc' Atom                   { LSuc $2 }
-        | R Atom Atom Atom              { LRec $2 $3 $4 }
-
-LNat    :: { LamTerm }
-        : nil                        { LNil }
-        | cons Atom Atom             { LCons $2 $3 }
 
 Type    : TYPEE                        { EmptyT }
         | TYPENAT                      { NatT }
@@ -122,6 +130,7 @@ data Token = TVar String
                | TNil
                | TCons
                | TRec
+               | TRecL
                | TDot
                | TOpen
                | TClose 
@@ -162,6 +171,7 @@ lexer cont s = case s of
                               ("in",rest)       -> cont TIn rest
                               ("suc", rest)     -> cont TSuc rest
                               ("R", rest)       -> cont TRec rest
+                              ("RL", rest)      -> cont TRecL rest
                               ("nil", rest)     -> cont TNil rest
                               ("cons",rest)     -> cont TCons rest
                               (var,rest)        -> cont (TVar var) rest

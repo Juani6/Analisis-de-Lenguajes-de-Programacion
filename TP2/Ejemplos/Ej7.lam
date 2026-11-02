@@ -1,9 +1,9 @@
 def ISZERO = \n:Nat. R (suc 0) (\r:Nat. \p:Nat. 0) n
 def EQ = \m:Nat. R ISZERO (\f:Nat->Nat. \p:Nat. \n:Nat. R 0 (\r:Nat. \q:Nat. f q) n) m
-def RM = \x:Nat. \l:List. R nil (\y:Nat. \r:List. R (cons y r) (\a:List. \p:Nat. r) (EQ x y)) l
-def elimDups = \l:List. R nil (\n:Nat. \r:List. cons n (RM n r)) l
+def RM = \x:Nat. \l:List. RL nil (\y:Nat. \r:List. R (cons y r) (\a:List. \p:Nat. r) (EQ x y)) l
+def elimDups = \l:List. RL nil (\n:Nat. \r:List. cons n (RM n r)) l
 
-def uno = suc 0
-def dos = suc uno
+def uno  = suc 0
+def dos  = suc uno
 def tres = suc dos
 def test = cons uno (cons uno (cons dos (cons tres (cons tres (cons uno (cons dos nil))))))

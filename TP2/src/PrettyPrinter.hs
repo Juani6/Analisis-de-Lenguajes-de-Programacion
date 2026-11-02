@@ -35,11 +35,11 @@ pp ii vs (Lam t c) =
     <> text (vs !! ii)
     <> text ":"
     <> printType t
-    <> text ". "
-    <> pp (ii + 1) vs c
+    <> text "."
+    <+> pp (ii + 1) vs c
 pp ii vs (Let t1 t2) =
-  text "let "
-    <> text (vs !! ii)
+  text "let"
+    <+> text (vs !! ii)
     <> text " = "
     <> pp ii vs t1
     <> text " in "
@@ -47,22 +47,26 @@ pp ii vs (Let t1 t2) =
 pp ii vs (Zero) = 
   text "0"
 pp ii vs (Suc t) = 
-  text "suc "
-    <> parensIf (isNotZero t) (pp ii vs t)
+  text "suc"
+    <+> parensIf (isNotZero t) (pp ii vs t)
 pp ii vs (Rec t1 t2 t3) =
     text "R"
-  <> sep 
+  <+> sep 
   [parens (pp ii vs t1),
    parens(pp ii vs t2),
    (pp ii vs t3)]
-
 pp ii vs (Nil) =
   text "nil"
 pp ii vs (Cons t1 t2) =
-    text "cons "
-  <> sep [parens (pp ii vs t1),
+    text "cons"
+  <+> sep [parens (pp ii vs t1),
           parensIf (isNotNil t2) (pp ii vs t2)]
-
+pp ii vs (RecL t1 t2 t3) =
+    text "RL"
+  <+> sep 
+  [parens (pp ii vs t1),
+   parens(pp ii vs t2),
+   (pp ii vs t3)]
 
 isNotZero :: Term -> Bool
 isNotZero Zero = False
@@ -105,6 +109,7 @@ fv (t   :@: u       ) = fv t ++ fv u
 fv (Lam _   u       ) = fv u
 fv (Let t1 t2)        = fv t1 ++ fv t2
 fv (Cons t1 t2)       = fv t1 ++ fv t2
+fv (RecL t1 t2 t3)    = fv t1 ++ fv t2 ++ fv t3
 ---
 printTerm :: Term -> Doc
 printTerm t = pp 0 (filter (\v -> not $ elem v (fv t)) vars) t

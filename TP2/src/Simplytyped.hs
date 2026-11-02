@@ -32,19 +32,20 @@ conversion :: LamTerm -> Term
 conversion = conversion' []
 
 conversion' :: [String] -> LamTerm -> Term
-conversion' [] (LVar s)        = Free (Global s)
-conversion' ns (LVar s)        = case dist ns s of
-                                       Just n  -> Bound n
-                                       Nothing -> Free (Global s)  
-conversion' ns (LAbs s t l)    = Lam t (conversion' (s : ns) l)
-conversion' ns (LApp l1 l2)    = conversion' ns l1 :@: conversion' ns l2
-conversion' ns (LLet s l1 l2)  = Let (conversion' ns l1) (conversion' (s:ns) l2)
-conversion' ns (LZero)         = Zero
-conversion' ns (LSuc t)        = Suc (conversion' ns t)
-conversion' ns (LRec t1 t2 t3) = Rec (conversion' ns t1) (conversion' ns t2) (conversion' ns t3)
-conversion' ns (LNil)          = Nil
---Sabemos que los parentesis no van pero los dejamos por una cuestion estetica
-conversion' ns (LCons t1 t2)   = Cons (conversion' ns t1) (conversion' ns t2)
+conversion' [] (LVar s)         = Free (Global s)
+conversion' ns (LVar s)         = case dist ns s of
+                                        Just n  -> Bound n
+                                        Nothing -> Free (Global s)  
+conversion' ns (LAbs s t l)     = Lam t (conversion' (s : ns) l)
+conversion' ns (LApp l1 l2)     = conversion' ns l1 :@: conversion' ns l2
+conversion' ns (LLet s l1 l2)   = Let (conversion' ns l1) (conversion' (s:ns) l2)
+conversion' ns (LZero)          = Zero
+conversion' ns (LSuc t)         = Suc (conversion' ns t)
+conversion' ns (LRec t1 t2 t3)  = Rec (conversion' ns t1) (conversion' ns t2) (conversion' ns t3)
+conversion' ns (LNil)           = Nil
+-- Sabemos que los parentesis no van pero los dejamos por una cuestion estetica
+conversion' ns (LCons t1 t2)    = Cons (conversion' ns t1) (conversion' ns t2)
+conversion' ns (LRecL t1 t2 t3) = RecL (conversion' ns t1) (conversion' ns t2) (conversion' ns t3)
 
 dist :: [String] -> String -> Maybe Int
 dist [] _     = Nothing
@@ -68,12 +69,14 @@ sub i t (Bound j) | i == j    = t
 sub _ _ (Bound j) | otherwise = Bound j
 sub _ _ (Free n   )           = Free n
 sub i t (u   :@: v)           = sub i t u :@: sub i t v
+sub i t (Let t1 t2)           = Let (sub i t t1) (sub (i+1) t t2)
 sub i t (Lam t'  u)           = Lam t' (sub (i + 1) t u)
-sub _ t Zero                  = Zero
+sub _ t (Zero)                = Zero
 sub i t (Suc t')              = Suc (sub i t t')
-sub i t (Rec t1 t2 t3)        = (Rec (sub i t t1) (sub i t t2) (sub i t t3))
-sub i t Nil                   = Nil
+sub i t (Rec t1 t2 t3)        = Rec (sub i t t1) (sub i t t2) (sub i t t3)
+sub i t (Nil)                 = Nil
 sub i t (Cons n lv)           = Cons (sub i t n) (sub i t lv)
+sub i t (RecL t1 t2 t3)       = RecL (sub i t t1) (sub i t t2) (sub i t t3)
 
 -- convierte un valor en el término equivalente
 quote :: Value -> Term
@@ -82,12 +85,12 @@ quote (VNum nv)        = quoteNumVal nv
 quote (VList l)        = quoteList l
 
 quoteNumVal :: NumVal -> Term
-quoteNumVal NZero        = Zero
-quoteNumVal (NSuc nv)    = Suc (quoteNumVal nv)
+quoteNumVal NZero      = Zero
+quoteNumVal (NSuc nv)  = Suc (quoteNumVal nv)
 
 quoteList :: ListVal -> Term
-quoteList VNil        = Nil
-quoteList (VCons n l) = Cons (quoteNumVal n) (quoteList l)
+quoteList VNil         = Nil
+quoteList (VCons n l)  = Cons (quoteNumVal n) (quoteList l)
 
 -- evalúa un término en un entorno dado
 
@@ -106,12 +109,13 @@ eval nvs (Nil)                        = VList VNil
 eval nvs (Cons t1 t2)                 = let n = unNum $ eval nvs t1
                                             t2' = unList $ eval nvs t2
                                         in VList $ VCons n t2'
-eval nvs (Rec t1 t2 Nil)              = eval nvs t1
-eval nvs (Rec t1 t2 (Cons n lv))      = eval nvs (t2 :@: n :@: (Rec t1 t2 lv))
+eval nvs (RecL t1 t2 Nil)             = eval nvs t1
+eval nvs (RecL t1 t2 (Cons n lv))     = eval nvs (t2 :@: n :@: (RecL t1 t2 lv))
+eval nvs (RecL t1 t2 t3)              = let t3' = eval nvs t3 in eval nvs (RecL t1 t2 (quote t3'))
 eval nvs (Rec t1 t2 Zero)             = eval nvs t1
 eval nvs (Rec t1 t2 (Suc t))          = eval nvs (t2 :@: (Rec t1 t2 t) :@: t) 
 eval nvs (Rec t1 t2 t3)               = let t3' = eval nvs t3 in eval nvs (Rec t1 t2 (quote t3'))
-eval _ (Lam t f)                      = VLam t f
+eval _   (Lam t f)                    = VLam t f
 
 unNum :: Value -> NumVal 
 unNum (VNum x) = x
@@ -158,21 +162,23 @@ notfoundError n = err $ show n ++ " no está definida."
 -- Entorno global para variables libres 
 -- Contexto para variables ligadas
 infer' :: Context -> NameEnv Value Type -> Term -> Either String Type
-infer' c _ (Bound i) = ret (c !! i)
-infer' _ e (Free  n) = case lookup n e of
+infer' c _ (Bound i)       = ret (c !! i)
+infer' _ e (Free  n)       = case lookup n e of
   Nothing     -> notfoundError n
   Just (_, t) -> ret t
-infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
+infer' c e (t :@: u)       = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
   case tt of
     FunT t1 t2 -> if (tu == t1) then ret t2 else matchError t1 tu
     _          -> notfunError tt
-infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
-infer' c e (Let t1 t2) = infer' c e t1 >>= \tt -> infer' (tt:c) e t2
-infer' c e Zero = ret NatT
-infer' c e (Suc t) = infer' c e t >>= \tt -> case tt of 
-                                                  NatT -> ret NatT
-                                                  _   -> notfunError tt
-infer' c e (Rec t1 t2 t3) = infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> infer' c e t3 >>= \tv ->
+infer' c e (Lam t u)       = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
+infer' c e (Let t1 t2)     = infer' c e t1 >>= \tt -> infer' (tt:c) e t2
+infer' c e Zero            = ret NatT
+infer' c e (Suc t)         = 
+  infer' c e t >>= \tt -> case tt of 
+                            NatT -> ret NatT
+                            _   -> notfunError tt
+infer' c e (Rec t1 t2 t3)  = 
+  infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> infer' c e t3 >>= \tv ->
   case tv of
     NatT -> (case tu of
               (FunT ty1 (FunT ty2 ty3)) -> if (ty2 == tv) 
@@ -181,6 +187,15 @@ infer' c e (Rec t1 t2 t3) = infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> in
                                                  else matchError (FunT tt (FunT tv tt)) tu)
                                            else matchError ty2 tv
               _ -> notfunError tv)
+    _ -> notfunError tv
+infer' c e Nil             = ret ListT
+infer' c e (Cons t1 t2)    = 
+  infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> if (tt == NatT) 
+                                                    then (if tu == ListT then ret tu else matchError ListT tu)
+                                                    else matchError NatT tt 
+infer' c e (RecL t1 t2 t3) = 
+  infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> infer' c e t3 >>= \tv ->
+  case tv of
     ListT -> (case tu of
                 (FunT ty1 (FunT ty2 ty3)) -> if (ty1 == NatT) 
                                              then (if (tt == ty2 && ty2 == ty3) 
@@ -189,8 +204,5 @@ infer' c e (Rec t1 t2 t3) = infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> in
                                              else matchError ty1 NatT
                 _ -> notfunError tv)
     _ -> notfunError tv   
-infer' c e Nil = ret ListT
-infer' c e (Cons t1 t2) = infer' c e t1 >>= \tt -> infer' c e t2 >>= \tu -> if (tt == NatT) 
-                                                                            then (if tu == ListT then ret tu else matchError ListT tu)
-                                                                            else matchError NatT tt 
+
 -- if (t1' == tt && tt == t3' && tv == NatT ) then ret tt else matchError
